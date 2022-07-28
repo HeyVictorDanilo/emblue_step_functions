@@ -1,0 +1,51 @@
+service: emblue-integration
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-1
+
+useDotenv: true
+
+plugins:
+  - serverless-step-functions
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+custom:
+  pythonRequirements:
+    dockerizePip: true
+
+package:
+  individually: true
+  exclude:
+    - 'node_modules/**'
+    - 'env/**'
+    - 'package.json'
+    - 'package-lock.json'
+    - 'requirements.txt'
+  include:
+    - '*.py'
+
+functions:
+  download_files:
+    handler: download_reports.handler
+  unzip_files:
+    handler: unzip_reports.handler
+
+stepFunctions:
+  stateMachines:
+    emblue_integration_flow:
+      name: emblue_integration_flow
+      definition:
+        StartAt: download_files
+        States:
+          download_files:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [download_files, Arn]
+            Next: unzip_files
+          unzip_files:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [unzip_files, Arn]
+            End: true
