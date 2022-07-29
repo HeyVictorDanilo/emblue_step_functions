@@ -21,7 +21,7 @@ load_dotenv()
 
 def handler(event, context):
     return {
-        'response': Emblue().download_files()
+        'sent_files': Emblue().download_files()
     }
 
 
@@ -44,11 +44,12 @@ class Emblue:
         return accounts
 
     def download_files(self):
-        ManageSFTPFile(
+        manage_sftp_file = ManageSFTPFile(
             accounts=self.get_emblue_accounts(),
             file_name=f"{os.getenv('FILE_BASE_NAME')}_{self.today}",
             client=self.client
-        ).download_files()
+        )
+        return manage_sftp_file.download_files()
 
 
 class ManageSFTPFile:
@@ -57,15 +58,15 @@ class ManageSFTPFile:
         self.file_name = file_name
         self.client = client
 
-    def download_files(self) -> int:
+    def download_files(self) -> List[str]:
+        sent_files = []
         for account in self.accounts:
             transport = paramiko.Transport(account[2], 22)
             transport.connect(username=account[4], password=account[3])
-
             with paramiko.SFTPClient.from_transport(transport) as sftp:
                 sftp.chdir(path="upload/Report")
                 with BytesIO() as data:
-                    sftp.getfo(f"ACTIVIDADDETALLEDIARIOFTP_20220713.zip", data)
+                    sftp.getfo(f"{self.file_name}.zip", data)
                     data.seek(0)
                     try:
                         response = self.client.upload_fileobj(
@@ -74,7 +75,8 @@ class ManageSFTPFile:
                             f"{account[4]}_{self.file_name}.zip"
                         )
                         logging.info(response)
+                        sent_files.append(f"{account[4]}_{self.file_name}.zip")
                     except ClientError as error:
                         logging.error(error)
                         continue
-        return 1
+        return sent_files
