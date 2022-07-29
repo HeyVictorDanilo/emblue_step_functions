@@ -6,6 +6,7 @@
     "serverless-step-functions": "^3.8.0"
   },
   "dependencies": {
+    "serverless-delete-loggroups": "^0.3.1",
     "serverless-pseudo-parameters": "^2.6.1"
   }
 }
