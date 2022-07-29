@@ -9,11 +9,13 @@ import os
 import paramiko
 import logging
 import boto3
+import time
 
 from botocore.exceptions import ClientError
 from datetime import date
 from typing import List, Tuple, Any
 from dotenv import load_dotenv
+from io import BytesIO
 
 load_dotenv()
 
@@ -31,17 +33,23 @@ class ManageSFTPFile:
                 's3',
                 aws_access_key_id=os.getenv("ACCESS_KEY"),
                 aws_secret_access_key=os.getenv("SECRET_KEY"),
-                region_name='us-east-1'
+                region_name=os.getenv("REGION")
             )
             with paramiko.SFTPClient.from_transport(transport) as sftp:
                 sftp.chdir(path="upload/Report")
-                with sftp.open(f"{self.file_name}.zip", "r") as f:
-                    f.prefetch()
+                with BytesIO() as data:
+                    sftp.getfo(f"ACTIVIDADDETALLEDIARIOFTP_20220728.zip", data)
+                    data.seek(0)
                     try:
-                        response = client.put_object(Body=f, Bucket=os.getenv("BUCKET_NAME"), Key="file_name")
-                    except ClientError as e:
-                        print(e)
-                        logging.error(e)
+                        response = client.upload_fileobj(
+                            data,
+                            os.getenv("BUCKET_NAME"),
+                            f"{account[2]}_{self.file_name}.zip"
+                        )
+                        return response
+                    except ClientError as error:
+                        logging.error(error)
+                        return None
 
 
 class Emblue:
@@ -64,5 +72,6 @@ class Emblue:
 
 
 def handler(event, context):
-    emblue = Emblue()
-    emblue.download_files()
+    return {
+        'response': Emblue().download_files()
+    }

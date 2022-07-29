@@ -11,6 +11,7 @@ plugins:
   - serverless-step-functions
   - serverless-python-requirements
   - serverless-dotenv-plugin
+
 custom:
   pythonRequirements:
     dockerizePip: true
@@ -29,6 +30,7 @@ package:
 functions:
   download_files:
     handler: download_reports.handler
+    timeout: 900
   unzip_files:
     handler: unzip_reports.handler
 
