@@ -21,9 +21,7 @@ load_dotenv()
 
 def handler(event, context):
     return {
-        'event': event,
-        'response': Emblue().download_files(),
-        'context': context
+        'response': Emblue().download_files()
     }
 
 
@@ -67,15 +65,16 @@ class ManageSFTPFile:
             with paramiko.SFTPClient.from_transport(transport) as sftp:
                 sftp.chdir(path="upload/Report")
                 with BytesIO() as data:
-                    sftp.getfo(f"{self.file_name}.zip", data)
+                    sftp.getfo(f"ACTIVIDADDETALLEDIARIOFTP_20220713.zip", data)
                     data.seek(0)
                     try:
                         response = self.client.upload_fileobj(
                             data,
                             os.getenv("BUCKET_NAME"),
-                            f"{account[2]}_{self.file_name}.zip"
+                            f"{account[4]}_{self.file_name}.zip"
                         )
                         logging.info(response)
                     except ClientError as error:
                         logging.error(error)
+                        continue
         return 1
