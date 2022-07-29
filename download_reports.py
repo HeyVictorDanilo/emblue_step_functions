@@ -59,7 +59,7 @@ class ManageSFTPFile:
         self.file_name = file_name
         self.client = client
 
-    def download_files(self) -> None:
+    def download_files(self) -> int:
         for account in self.accounts:
             transport = paramiko.Transport(account[2], 22)
             transport.connect(username=account[4], password=account[3])
@@ -75,7 +75,7 @@ class ManageSFTPFile:
                             os.getenv("BUCKET_NAME"),
                             f"{account[2]}_{self.file_name}.zip"
                         )
-                        return response
+                        logging.info(response)
                     except ClientError as error:
                         logging.error(error)
-                        return None
+        return 1
