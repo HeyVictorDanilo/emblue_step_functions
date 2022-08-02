@@ -89,5 +89,7 @@ class ZipFiles:
 
 def handler(event, context):
     zip_files = ZipFiles()
-    zip_files.executor()
-    return {}
+    response = zip_files.executor()
+    return {
+        "response": response
+    }
