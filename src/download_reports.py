@@ -3,7 +3,7 @@ try:
 except ImportError:
     pass
 
-from main_db import DBInstance
+from src.main_db import DBInstance
 
 import os
 import paramiko
@@ -21,7 +21,7 @@ load_dotenv()
 
 def handler(event, context):
     return {
-        'sent_files': Emblue().download_files()
+        'sent_files': Emblue().executor()
     }
 
 
@@ -43,7 +43,7 @@ class Emblue:
         accounts = self.db_instance.handler(query="SELECT * FROM em_blue;")
         return accounts
 
-    def download_files(self):
+    def executor(self):
         manage_sftp_file = ManageSFTPFile(
             accounts=self.get_emblue_accounts(),
             file_name=f"{os.getenv('FILE_BASE_NAME')}_{self.today}",
@@ -71,7 +71,7 @@ class ManageSFTPFile:
                     try:
                         response = self.client.upload_fileobj(
                             data,
-                            os.getenv("BUCKET_NAME"),
+                            os.getenv("BUCKET_ZIP_FILES"),
                             f"{account[4]}_{self.file_name}.zip"
                         )
                         logging.info(response)

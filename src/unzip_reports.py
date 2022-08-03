@@ -40,7 +40,7 @@ class ZipFiles:
 
     def get_file_contents(self):
         try:
-            response = self.client.list_objects(Bucket=os.getenv("BUCKET_NAME"))
+            response = self.client.list_objects(Bucket=os.getenv("BUCKET_ZIP_FILES"))
         except ClientError as e:
             logging.error(e)
         else:
@@ -48,27 +48,29 @@ class ZipFiles:
 
     def process_contents(self, contents):
         delete_zip_files_data = []
+        count = 0
         for content in contents:
             try:
                 file = BytesIO(
                     self.client.get_object(
-                        Bucket=os.getenv("BUCKET_NAME"), Key=content.get("Key")
+                        Bucket=os.getenv("BUCKET_ZIP_FILES"), Key=content.get("Key")
                     )["Body"].read()
                 )
             except ClientError as e:
                 logging.error(e)
             else:
                 delete_zip_files_data.append({"Key": content.get("Key")})
-                self.process_zip_file(_file=zipfile.ZipFile(file))
+                self.process_zip_file(_file=zipfile.ZipFile(file), count=count)
+                count += 1
         self.delete_zip_files(data=delete_zip_files_data)
 
-    def process_zip_file(self, _file):
+    def process_zip_file(self, _file, count):
         for file_name in _file.namelist():
             try:
                 self.client.upload_fileobj(
                     Fileobj=_file.open(file_name),
-                    Bucket=os.getenv("BUCKET_NAME"),
-                    Key=f"{file_name}",
+                    Bucket=os.getenv("BUCKET_CSV_FILES"),
+                    Key=f"{count}_{file_name}",
                 )
             except ClientError as e:
                 logging.error(e)
@@ -78,7 +80,7 @@ class ZipFiles:
     def delete_zip_files(self, data):
         try:
             response = self.client.delete_objects(
-                Bucket=os.getenv("BUCKET_NAME"),
+                Bucket=os.getenv("BUCKET_ZIP_FILES"),
                 Delete={"Objects": data},
             )
         except ClientError as e:
