@@ -11,7 +11,7 @@ import logging
 import boto3
 
 from botocore.exceptions import ClientError
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Tuple, Any
 from dotenv import load_dotenv
 from io import BytesIO
@@ -37,7 +37,7 @@ class Emblue:
         if searching_date:
             self.today = searching_date
         else:
-            self.today = date.today().strftime("%Y%m%d")
+            self.today = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
 
     def get_emblue_accounts(self) -> List[Tuple[Any]]:
         accounts = self.db_instance.handler(query="SELECT * FROM em_blue;")

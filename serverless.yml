@@ -33,6 +33,10 @@ functions:
     timeout: 900
   unzip_files:
     handler: unzip_reports.handler
+    timeout: 900
+  process_files:
+    handler: process_files.handler
+    timeout: 900
 
 stepFunctions:
   stateMachines:
@@ -50,4 +54,9 @@ stepFunctions:
             Type: Task
             Resource:
               Fn::GetAtt: [unzip_files, Arn]
+            Next: process_files
+          process_files:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [process_files, Arn]
             End: true
