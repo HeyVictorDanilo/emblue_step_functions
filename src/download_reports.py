@@ -25,7 +25,7 @@ def handler(event, context):
 
 
 class Emblue:
-    def __init__(self, starting_date: str = "", finishing_date: str = ""):
+    def __init__(self, days_difference: int):
         self.db_instance = DBInstance(public_key=os.getenv("CLIENT_KEY"))
         self.client = boto3.client(
             service_name='s3',
@@ -33,36 +33,28 @@ class Emblue:
             aws_access_key_id=os.getenv("ACCESS_KEY"),
             aws_secret_access_key=os.getenv("SECRET_KEY"),
         )
-        if starting_date:
-            self.starting_date = starting_date
+        if days_difference:
+            self.days_difference = days_difference
         else:
-            self.starting_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-
-        if finishing_date:
-            self.finishing_date = finishing_date
-        else:
-            self.finishing_date = date.today().strftime("%Y%m%d")
+            self.days_difference = 7
 
     def __get_emblue_accounts(self):
         accounts = self.db_instance.handler(query="SELECT * FROM em_blue;")
         return accounts
 
-    def __date_range(self):
-        return range(self.starting_date, self.finishing_date)
-
     def get_files(self):
         sftp_instance = ManageSFTPFile(
             accounts=self.__get_emblue_accounts(),
-            date_range=self.__date_range(),
+            days_difference=self.days_difference,
             client=self.client
         )
         return sftp_instance.download_files()
 
 
 class ManageSFTPFile:
-    def __init__(self, accounts, date_range, client):
+    def __init__(self, accounts, days_difference, client):
         self.accounts = accounts
-        self.date_range = date_range
+        self.days_difference = days_difference
         self.client = client
         self.send_files = []
 
@@ -71,15 +63,18 @@ class ManageSFTPFile:
         transport = paramiko.Transport(account[2], 22)
         transport.connect(username=account[4], password=account[3])
         with paramiko.SFTPClient.from_transport(transport) as sftp:
+            sftp.chdir(path="upload/Report")
             return sftp
 
     def download_files(self):
         for account in self.accounts:
-            sftp = self.__establish_conn(account=account)
-            sftp.chdir(path="upload/Report")
-            for date_file in self.date_range:
+            for i in range(0, self.days_difference+1):
                 try:
-                    response = self.__send_file(sftp_conn=sftp, date_file=date_file, account_name=account[4])
+                    response = self.__send_file(
+                        sftp_conn=self.__establish_conn(account=account),
+                        date_file=date.today() - timedelta(days=i),
+                        account_name=account[4]
+                    )
                 except ClientError as error:
                     logging.error(error)
                 else:
