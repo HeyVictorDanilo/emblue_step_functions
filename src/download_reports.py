@@ -12,7 +12,6 @@ import boto3
 
 from botocore.exceptions import ClientError
 from datetime import date, timedelta
-from typing import List, Tuple, Any
 from dotenv import load_dotenv
 from io import BytesIO
 
@@ -21,7 +20,7 @@ load_dotenv()
 
 def handler(event, context):
     return {
-        'sent_files': Emblue().executor()
+        'sent_files': Emblue().get_files()
     }
 
 
@@ -44,7 +43,7 @@ class Emblue:
         else:
             self.finishing_date = date.today().strftime("%Y%m%d")
 
-    def __get_emblue_accounts(self) -> List[Tuple[Any]]:
+    def __get_emblue_accounts(self):
         accounts = self.db_instance.handler(query="SELECT * FROM em_blue;")
         return accounts
 
@@ -52,33 +51,42 @@ class Emblue:
         return range(self.starting_date, self.finishing_date)
 
     def get_files(self):
-        files = ManageSFTPFile.download_files(
+        sftp_instance = ManageSFTPFile(
             accounts=self.__get_emblue_accounts(),
-            date_range=self.__date_range()
+            date_range=self.__date_range(),
+            client=self.client
         )
-
+        return sftp_instance.download_files()
 
 
 class ManageSFTPFile:
-    def __init__(self, accounts, date_range):
+    def __init__(self, accounts, date_range, client):
         self.accounts = accounts
         self.date_range = date_range
+        self.client = client
+        self.send_files = []
 
     @staticmethod
-    def __stablish_conn(account: List[Tuple[Any]]):
+    def __establish_conn(account):
         transport = paramiko.Transport(account[2], 22)
         transport.connect(username=account[4], password=account[3])
         with paramiko.SFTPClient.from_transport(transport) as sftp:
             return sftp
 
-    def download_files(self) -> List[str]:
+    def download_files(self):
         for account in self.accounts:
-            sftp = self.__stablish_conn(account=account)
+            sftp = self.__establish_conn(account=account)
             sftp.chdir(path="upload/Report")
             for date_file in self.date_range:
-                self.__send_file(sftp_conn=sftp, date_file=date_file)
+                try:
+                    response = self.__send_file(sftp_conn=sftp, date_file=date_file, account_name=account[4])
+                except ClientError as error:
+                    logging.error(error)
+                else:
+                    self.send_files.append(response)
+        return self.send_files
 
-    def __send_file(self, sftp_conn, date_file):
+    def __send_file(self, sftp_conn, date_file, account_name):
         with BytesIO() as data:
             sftp_conn.getfo(f"{os.getenv('FILE_BASE_NAME')}_{date_file}.zip", data)
             data.seek(0)
@@ -86,7 +94,7 @@ class ManageSFTPFile:
                 response = self.client.upload_fileobj(
                     data,
                     os.getenv("BUCKET_ZIP_FILES"),
-                    f"_{self.file_name}.zip"
+                    f"{account_name}_{os.getenv('FILE_BASE_NAME')}_{date_file}.zip"
                 )
             except ClientError as error:
                 logging.error(error)
