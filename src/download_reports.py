@@ -19,13 +19,14 @@ load_dotenv()
 
 
 def handler(event, context):
+    emblue = Emblue()
     return {
-        'sent_files': Emblue().get_files()
+        'sent_files': emblue.get_files()
     }
 
 
 class Emblue:
-    def __init__(self, days_difference: int):
+    def __init__(self, days_difference: int = 5):
         self.db_instance = DBInstance(public_key=os.getenv("CLIENT_KEY"))
         self.client = boto3.client(
             service_name='s3',
@@ -33,10 +34,8 @@ class Emblue:
             aws_access_key_id=os.getenv("ACCESS_KEY"),
             aws_secret_access_key=os.getenv("SECRET_KEY"),
         )
-        if days_difference:
-            self.days_difference = days_difference
-        else:
-            self.days_difference = 7
+
+        self.days_difference = days_difference
 
     def __get_emblue_accounts(self):
         accounts = self.db_instance.handler(query="SELECT * FROM em_blue;")
@@ -58,6 +57,7 @@ class ManageSFTPFile:
         self.client = client
         self.send_files = []
 
+    """
     @staticmethod
     def __establish_conn(account):
         transport = paramiko.Transport(account[2], 22)
@@ -65,15 +65,15 @@ class ManageSFTPFile:
         with paramiko.SFTPClient.from_transport(transport) as sftp:
             sftp.chdir(path="upload/Report")
             return sftp
+    """
 
     def download_files(self):
         for account in self.accounts:
-            for i in range(0, self.days_difference+1):
+            for i in range(0, self.days_difference):
                 try:
                     response = self.__send_file(
-                        sftp_conn=self.__establish_conn(account=account),
-                        date_file=date.today() - timedelta(days=i),
-                        account_name=account[4]
+                        date_file=(date.today() - timedelta(days=i)).strftime("%Y%m%d"),
+                        account=account
                     )
                 except ClientError as error:
                     logging.error(error)
@@ -81,17 +81,21 @@ class ManageSFTPFile:
                     self.send_files.append(response)
         return self.send_files
 
-    def __send_file(self, sftp_conn, date_file, account_name):
+    def __send_file(self, date_file, account):
         with BytesIO() as data:
-            sftp_conn.getfo(f"{os.getenv('FILE_BASE_NAME')}_{date_file}.zip", data)
-            data.seek(0)
-            try:
-                response = self.client.upload_fileobj(
-                    data,
-                    os.getenv("BUCKET_ZIP_FILES"),
-                    f"{account_name}_{os.getenv('FILE_BASE_NAME')}_{date_file}.zip"
-                )
-            except ClientError as error:
-                logging.error(error)
-            else:
-                return response
+            transport = paramiko.Transport(account[2], 22)
+            transport.connect(username=account[4], password=account[3])
+            with paramiko.SFTPClient.from_transport(transport) as sftp:
+                sftp.chdir(path="upload/Report")
+                sftp.getfo(f"{os.getenv('FILE_BASE_NAME')}_{date_file}.zip", data)
+                data.seek(0)
+                try:
+                    response = self.client.upload_fileobj(
+                        data,
+                        os.getenv("BUCKET_ZIP_FILES"),
+                        f"{account[4]}_{os.getenv('FILE_BASE_NAME')}_{date_file}.zip"
+                    )
+                except ClientError as error:
+                    logging.error(error)
+                else:
+                    return response
