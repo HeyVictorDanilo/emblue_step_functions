@@ -15,19 +15,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class ZipFiles:
-    def __init__(self):
+class ZipFile:
+    def __init__(self, file_name):
         self.client = boto3.client(
             service_name="s3",
             region_name=os.getenv("REGION"),
             aws_access_key_id=os.getenv("ACCESS_KEY"),
             aws_secret_access_key=os.getenv("SECRET_KEY"),
         )
+        self.file_name = file_name
 
     def executor(self):
         try:
-            contents = self.get_file_contents()
-            self.process_contents(contents=contents)
+            self.process_content(file_name=self.file_name)
         except Exception as e:
             return {
                 "Error": e,
@@ -38,60 +38,51 @@ class ZipFiles:
                 "Description": "Successfully execution",
             }
 
-    def get_file_contents(self):
+    def process_content(self, file_name):
         try:
-            response = self.client.list_objects(Bucket=os.getenv("BUCKET_ZIP_FILES"))
+            file = BytesIO(
+                self.client.get_object(
+                    Bucket=os.getenv("BUCKET_ZIP_FILES"), Key=file_name
+                )["Body"].read()
+            )
         except ClientError as e:
             logging.error(e)
         else:
-            return response.get("Contents")
+            self.process_zip_file(_file=zipfile.ZipFile(file))
+            self.delete_zip_file(file_name)
 
-    def process_contents(self, contents):
-        delete_zip_files_data = []
-        count = 0
-        for content in contents:
-            try:
-                file = BytesIO(
-                    self.client.get_object(
-                        Bucket=os.getenv("BUCKET_ZIP_FILES"), Key=content.get("Key")
-                    )["Body"].read()
-                )
-            except ClientError as e:
-                logging.error(e)
-            else:
-                delete_zip_files_data.append({"Key": content.get("Key")})
-                self.process_zip_file(_file=zipfile.ZipFile(file), count=count)
-                count += 1
-        self.delete_zip_files(data=delete_zip_files_data)
+    def __get_account_name(self):
+        return self.file_name.split("_")[0]
 
-    def process_zip_file(self, _file, count):
+    def process_zip_file(self, _file):
+
         for file_name in _file.namelist():
             try:
                 self.client.upload_fileobj(
                     Fileobj=_file.open(file_name),
                     Bucket=os.getenv("BUCKET_CSV_FILES"),
-                    Key=f"{count}_{file_name}",
+                    Key=f"{self.__get_account_name()}_{file_name}",
                 )
             except ClientError as e:
                 logging.error(e)
             else:
                 logging.info("Uploaded unzipped file")
 
-    def delete_zip_files(self, data):
+    def delete_zip_file(self, data):
         try:
-            response = self.client.delete_objects(
+            self.client.delete_object(
                 Bucket=os.getenv("BUCKET_ZIP_FILES"),
-                Delete={"Objects": data},
+                Key=self.file_name,
             )
         except ClientError as e:
             logging.error(e)
         else:
-            return response
+            logging.info("Deleted zip file")
 
 
 def handler(event, context):
-    zip_files = ZipFiles()
-    response = zip_files.executor()
+    zip_file = ZipFile(file_name=event["file_name"])
+    response = zip_file.executor()
     return {
         "response": response
     }
