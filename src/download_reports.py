@@ -13,6 +13,9 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import boto3
 import paramiko
+from paramiko.ssh_exception import SSHException
+
+from main_db import DBInstance
 
 load_dotenv()
 
@@ -38,19 +41,45 @@ class SFTPFile:
     def download_file(self):
         with BytesIO() as data:
             time.sleep(random.uniform(0.5, 5.5))
-            transport = paramiko.Transport(self.account[0], 22)
-            transport.connect(username=self.account[1], password=self.account[2])
-            with paramiko.SFTPClient.from_transport(transport) as sftp:
-                sftp.chdir(path="upload/Report")
-                sftp.getfo(f"{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip", data)
-                data.seek(0)
-                try:
-                    self.client.upload_fileobj(
-                        data,
-                        os.getenv("BUCKET_ZIP_FILES"),
-                        f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
-                    )
-                except ClientError as error:
-                    logging.error(error)
-                else:
-                    return f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
+            try:
+                transport = paramiko.Transport(self.account[0], 22)
+                transport.connect(username=self.account[1], password=self.account[2])
+            except SSHException as error:
+                self.__write_log(
+                    name=str(error),
+                    description="Paramiko connection error",
+                    is_bug=True
+                )
+            else:
+                with paramiko.SFTPClient.from_transport(transport) as sftp:
+                    sftp.chdir(path="upload/Report")
+                    sftp.getfo(f"{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip", data)
+                    data.seek(0)
+                    try:
+                        self.client.upload_fileobj(
+                            data,
+                            os.getenv("BUCKET_ZIP_FILES"),
+                            f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
+                        )
+                    except ClientError as error:
+                        logging.error(error)
+                        self.__write_log(
+                            name=str(error),
+                            description="Client error getting zip object",
+                            is_bug=True
+                        )
+                    else:
+                        self.__write_log(name="Download file", description="Successfully", is_bug=False)
+                        return f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
+
+    def __write_log(self, name, description, is_bug = False):
+        DBInstance.handler(query=f"""
+            INSERT INTO em_blue_logs (name, description, account, file_name, is_bug)
+                VALUES (
+                    '{name}', 
+                    '{description}', 
+                    '{self.account[2]}', 
+                    '{f"{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', 
+                    {is_bug}
+                );
+        """)
