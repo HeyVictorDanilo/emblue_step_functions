@@ -29,8 +29,9 @@ class ZipFile:
         try:
             self.process_content(file_name=self.file_name)
         except Exception as e:
+            logging.info(f"Error with: {str(e)}")
             return {
-                "Error": e,
+                "Error": str(e),
                 "Description": "Something was wrong",
             }
         else:
@@ -49,13 +50,12 @@ class ZipFile:
             logging.error(e)
         else:
             self.process_zip_file(_file=zipfile.ZipFile(file))
-            self.delete_zip_file(file_name)
+            #self.delete_zip_file(file_name)
 
     def __get_account_name(self):
         return self.file_name.split("_")[0]
 
     def process_zip_file(self, _file):
-
         for file_name in _file.namelist():
             try:
                 self.client.upload_fileobj(
@@ -63,10 +63,11 @@ class ZipFile:
                     Bucket=os.getenv("BUCKET_CSV_FILES"),
                     Key=f"{self.__get_account_name()}_{file_name}",
                 )
+                print(f"Sent file: {f'{self.__get_account_name()}_{file_name}'}")
             except ClientError as e:
                 logging.error(e)
             else:
-                logging.info("Uploaded unzipped file")
+                logging.info(f"Uploaded unzipped file: {f'{self.__get_account_name()}_{file_name}'}")
 
     def delete_zip_file(self, data):
         try:
@@ -81,8 +82,13 @@ class ZipFile:
 
 
 def handler(event, context):
-    zip_file = ZipFile(file_name=event["file_name"])
-    response = zip_file.executor()
-    return {
-        "response": response
-    }
+    try:
+        zip_file = ZipFile(file_name=event["file_name"])
+        response = zip_file.executor()
+    except Exception as e:
+        print(e)
+    else:
+        logging.info(f"Processing file: {event['file_name']}")
+        return {
+            "response": response
+        }
