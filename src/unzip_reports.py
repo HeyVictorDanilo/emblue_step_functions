@@ -50,7 +50,7 @@ class ZipFile:
             logging.error(e)
         else:
             self.process_zip_file(_file=zipfile.ZipFile(file))
-            #self.delete_zip_file(file_name)
+            self.delete_zip_file(file_name)
 
     def __get_account_name(self):
         return self.file_name.split("_")[0]
@@ -63,7 +63,6 @@ class ZipFile:
                     Bucket=os.getenv("BUCKET_CSV_FILES"),
                     Key=f"{self.__get_account_name()}_{file_name}",
                 )
-                print(f"Sent file: {f'{self.__get_account_name()}_{file_name}'}")
             except ClientError as e:
                 logging.error(e)
             else:
@@ -86,7 +85,7 @@ def handler(event, context):
         zip_file = ZipFile(file_name=event["file_name"])
         response = zip_file.executor()
     except Exception as e:
-        print(e)
+        logging.error(e)
     else:
         logging.info(f"Processing file: {event['file_name']}")
         return {
