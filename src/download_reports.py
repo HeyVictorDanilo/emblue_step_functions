@@ -45,7 +45,7 @@ class SFTPFile:
                 transport = paramiko.Transport(self.account[0], 22)
                 transport.connect(username=self.account[1], password=self.account[2])
             except SSHException as error:
-                self.__write_log(message=error, status="PENDING_TO_PROCESS")
+                self.__write_log(message=error, status=0)
             else:
                 with paramiko.SFTPClient.from_transport(transport) as sftp:
                     sftp.chdir(path="upload/Report")
@@ -58,9 +58,9 @@ class SFTPFile:
                             f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
                         )
                     except ClientError as error:
-                        self.__write_log(message=error, status="PENDING_TO_PROCESS")
+                        self.__write_log(message=error, status=0)
                     else:
-                        self.__write_log(message="Download zip file successfully", status="PENDING_TO_PROCESS")
+                        self.__write_log(message="Download zip file successfully", status=0)
                         return f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
 
     def __write_log(self, message, status):
@@ -71,7 +71,7 @@ class SFTPFile:
                     '{date.today()}',
                     '{self.account[1]}',
                     '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}',
-                    '{status}',
+                    {status},
                     '{str(message)}'
                 );
             """

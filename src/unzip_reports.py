@@ -35,7 +35,7 @@ class ZipFile:
         try:
             self.process_content(file_name=self.file_name)
         except Exception as e:
-            self.__write_log(message=e, status="PROCESSING")
+            self.__write_log(message=e, status=1)
             return {
                 "Error": str(e),
                 "Description": "Something was wrong",
@@ -53,7 +53,7 @@ class ZipFile:
                 )["Body"].read()
             )
         except ClientError as e:
-            self.__write_log(message=e, status="PROCESSING")
+            self.__write_log(message=e, status=1)
         else:
             self.process_zip_file(_file=zipfile.ZipFile(file))
             self.delete_zip_file(file_name)
@@ -70,7 +70,7 @@ class ZipFile:
                     Key=f"{self.__get_account_name()}_{file_name}",
                 )
             except ClientError as e:
-                self.__write_log(message=e, status="PROCESSING")
+                self.__write_log(message=e, status=1)
             else:
                 logger.info(f"Uploaded unzipped file: {f'{self.__get_account_name()}_{file_name}'}")
 
@@ -93,7 +93,7 @@ class ZipFile:
                     '{date.today()}',
                     '{self.__get_account_name()}',
                     '{self.file_name}',
-                    '{status}',
+                    {status},
                     '{str(message)}'
                 );
             """
