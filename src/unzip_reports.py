@@ -3,6 +3,8 @@ try:
 except ImportError:
     pass
 
+from datetime import date
+
 import boto3
 import os
 from io import BytesIO
@@ -11,6 +13,7 @@ import logging
 import zipfile
 
 from dotenv import load_dotenv
+from main_db import DBInstance
 
 load_dotenv()
 
@@ -29,7 +32,7 @@ class ZipFile:
         try:
             self.process_content(file_name=self.file_name)
         except Exception as e:
-            logging.info(f"Error with: {str(e)}")
+            self.__write_log(message=e, status="PROCESSING")
             return {
                 "Error": str(e),
                 "Description": "Something was wrong",
@@ -47,7 +50,7 @@ class ZipFile:
                 )["Body"].read()
             )
         except ClientError as e:
-            logging.error(e)
+            self.__write_log(message=e, status="PROCESSING")
         else:
             self.process_zip_file(_file=zipfile.ZipFile(file))
             self.delete_zip_file(file_name)
@@ -64,7 +67,7 @@ class ZipFile:
                     Key=f"{self.__get_account_name()}_{file_name}",
                 )
             except ClientError as e:
-                logging.error(e)
+                self.__write_log(message=e, status="PROCESSING")
             else:
                 logging.info(f"Uploaded unzipped file: {f'{self.__get_account_name()}_{file_name}'}")
 
@@ -78,6 +81,20 @@ class ZipFile:
             logging.error(e)
         else:
             logging.info("Deleted zip file")
+
+    def __write_log(self, message, status):
+        db = DBInstance(os.getenv("CLIENT_KEY"))
+        db.handler(query=f"""
+            INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
+                VALUES (
+                    '{date.today()}'
+                    '{self.__get_account_name()}',
+                    '{self.file_name}',
+                    '{status}',
+                    '{str(message)}'
+                );
+            """
+                   )
 
 
 def handler(event, context):
