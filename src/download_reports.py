@@ -64,7 +64,8 @@ class SFTPFile:
                         return f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
 
     def __write_log(self, message, status):
-        DBInstance.handler(query=f"""
+        db = DBInstance(public_key=os.getenv("CLIENT_KEY"))
+        db.handler(query=f"""
             INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
                 VALUES (
                     '{date.today()}'
@@ -74,4 +75,4 @@ class SFTPFile:
                     '{str(message)}'
                 );
             """
-                           )
+                   )
