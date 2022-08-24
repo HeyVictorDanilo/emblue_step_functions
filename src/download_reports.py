@@ -8,7 +8,6 @@ from datetime import date
 import os
 import time
 import random
-import logging
 
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -75,4 +74,4 @@ class SFTPFile:
                     '{str(message)}'
                 );
             """
-        )
+                           )
