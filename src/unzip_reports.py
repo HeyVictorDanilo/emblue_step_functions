@@ -87,7 +87,7 @@ class ZipFile:
         db.handler(query=f"""
             INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
                 VALUES (
-                    '{date.today()}'
+                    '{date.today()}',
                     '{self.__get_account_name()}',
                     '{self.file_name}',
                     '{status}',

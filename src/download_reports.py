@@ -68,7 +68,7 @@ class SFTPFile:
         db.handler(query=f"""
             INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
                 VALUES (
-                    '{date.today()}'
+                    '{date.today()}',
                     '{self.account[1]}',
                     '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}',
                     '{status}',
