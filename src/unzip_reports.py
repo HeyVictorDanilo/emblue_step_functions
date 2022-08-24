@@ -17,6 +17,9 @@ from main_db import DBInstance
 
 load_dotenv()
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 
 class ZipFile:
     def __init__(self, file_name):
@@ -69,7 +72,7 @@ class ZipFile:
             except ClientError as e:
                 self.__write_log(message=e, status="PROCESSING")
             else:
-                logging.info(f"Uploaded unzipped file: {f'{self.__get_account_name()}_{file_name}'}")
+                logger.info(f"Uploaded unzipped file: {f'{self.__get_account_name()}_{file_name}'}")
 
     def delete_zip_file(self, data):
         try:
@@ -78,9 +81,9 @@ class ZipFile:
                 Key=self.file_name,
             )
         except ClientError as e:
-            logging.error(e)
+            logger.error(e)
         else:
-            logging.info("Deleted zip file")
+            logger.info("Deleted zip file")
 
     def __write_log(self, message, status):
         db = DBInstance(os.getenv("CLIENT_KEY"))
@@ -102,9 +105,9 @@ def handler(event, context):
         zip_file = ZipFile(file_name=event["file_name"])
         response = zip_file.executor()
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
     else:
-        logging.info(f"Processing file: {event['file_name']}")
+        logger.info(f"Processing file: {event['file_name']}")
         return {
             "response": response
         }
