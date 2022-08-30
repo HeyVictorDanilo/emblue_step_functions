@@ -15,7 +15,7 @@ import boto3
 import paramiko
 from paramiko.ssh_exception import SSHException
 
-from main_db import DBInstance
+from src.main_db import DBInstance
 
 load_dotenv()
 
@@ -42,8 +42,8 @@ class SFTPFile:
         with BytesIO() as data:
             time.sleep(random.uniform(0.5, 5.5))
             try:
-                transport = paramiko.Transport(self.account[0], 22)
-                transport.connect(username=self.account[1], password=self.account[2])
+                transport = paramiko.Transport(self.account[1], 22)
+                transport.connect(username=self.account[2], password=self.account[3])
             except SSHException as error:
                 self.__write_log(message=error, status=0)
             else:
@@ -55,24 +55,60 @@ class SFTPFile:
                         self.client.upload_fileobj(
                             data,
                             os.getenv("BUCKET_ZIP_FILES"),
-                            f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
+                            f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
                         )
                     except ClientError as error:
                         self.__write_log(message=error, status=0)
                     else:
                         self.__write_log(message="Download zip file successfully", status=0)
-                        return f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
+                        return f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"
 
     def __write_log(self, message, status):
         db = DBInstance(public_key=os.getenv("CLIENT_KEY"))
-        db.handler(query=f"""
-            INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
+        if self.account[4]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES ('{date.today()}', {self.account[0]}, 0, 
+                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{str(message)}', '{date.today()}');
+                """
+            )
+
+        if self.account[5]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
                 VALUES (
-                    '{date.today()}',
-                    '{self.account[1]}',
-                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}',
-                    {status},
-                    '{str(message)}'
+                    '{date.today()}', {self.account[0]}, 1,
+                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{str(message)}', '{date.today()}');
+                """
+            )
+
+        if self.account[6]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES (
+                    '{date.today()}', {self.account[0]}, 2,
+                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{str(message)}', '{date.today()}'
                 );
-            """
-                   )
+                """
+            )
+
+        if self.account[7]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES (
+                    '{date.today()}', {self.account[0]}, 3,
+                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{str(message)}', '{date.today()}');
+                """
+                                     )
