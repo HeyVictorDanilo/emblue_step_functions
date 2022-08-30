@@ -13,7 +13,7 @@ import logging
 import zipfile
 
 from dotenv import load_dotenv
-from main_db import DBInstance
+from src.main_db import DBInstance
 
 load_dotenv()
 
@@ -85,19 +85,68 @@ class ZipFile:
         else:
             logger.info("Deleted zip file")
 
+    def __get_account_values(self):
+        db = DBInstance(os.getenv("CLIENT_KEY"))
+        result = db.handler(query=f"""
+            SELECT 
+                id, 
+                emb.migrate_open_email, 
+                emb.migrate_link_click, 
+                emb.migrate_unsubscribe,
+                emb.migrate_sent_email 
+            FROM 
+                em_blue 
+            WHERE 
+                emblue_user = '{self.__get_account_name()}';"""
+            )
+        return result
+
     def __write_log(self, message, status):
         db = DBInstance(os.getenv("CLIENT_KEY"))
-        db.handler(query=f"""
-            INSERT INTO em_blue_migration_log (date_migrated, account, file_name, status, message)
+        account_values = self.__get_account_values()
+
+        if account_values[1]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES ('{date.today()}', {account_values[0]}, 0, '{self.file_name}, {status}, '{str(message)}', 
+                    '{date.today()}');
+                """
+            )
+
+        if account_values[2]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
                 VALUES (
-                    '{date.today()}',
-                    '{self.__get_account_name()}',
-                    '{self.file_name}',
-                    {status},
-                    '{str(message)}'
-                );
-            """
-                   )
+                    '{date.today()}', {account_values[0]}, 1, '{self.file_name}, {status}, '{str(message)}', 
+                    '{date.today()}');
+                """
+            )
+
+        if account_values[3]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES (
+                    '{date.today()}', {account_values[0]}, 2, '{self.file_name}, {status}, '{str(message)}', 
+                    '{date.today()}');
+                """
+            )
+
+        if account_values[4]:
+            db.handler(query=f"""
+                INSERT INTO em_blue_migration_log (date_migrated, account_id, event_migrated, file_name, status, 
+                    message, created_at
+                )
+                VALUES (
+                    '{date.today()}', {account_values[0]}, 3, '{self.file_name}, {status}, '{str(message)}', 
+                    '{date.today()}');
+                """
+            )
 
 
 def handler(event, context):

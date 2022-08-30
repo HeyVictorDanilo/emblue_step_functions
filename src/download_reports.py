@@ -71,7 +71,7 @@ class SFTPFile:
                     message, created_at
                 )
                 VALUES ('{date.today()}', {self.account[0]}, 0, 
-                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
                     '{str(message)}', '{date.today()}');
                 """
             )
@@ -83,7 +83,7 @@ class SFTPFile:
                 )
                 VALUES (
                     '{date.today()}', {self.account[0]}, 1,
-                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
                     '{str(message)}', '{date.today()}');
                 """
             )
@@ -95,7 +95,7 @@ class SFTPFile:
                 )
                 VALUES (
                     '{date.today()}', {self.account[0]}, 2,
-                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
                     '{str(message)}', '{date.today()}'
                 );
                 """
@@ -108,7 +108,7 @@ class SFTPFile:
                 )
                 VALUES (
                     '{date.today()}', {self.account[0]}, 3,
-                    '{f"{self.account[1]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
+                    '{f"{self.account[2]}_{os.getenv('FILE_BASE_NAME')}_{self.date_file}.zip"}', {status},
                     '{str(message)}', '{date.today()}');
                 """
                                      )
